@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Interactive Room</title>
     <style>
         * {
@@ -23,26 +23,29 @@
             height: 100%;
             overflow: hidden;
             transform-origin: 0 0;
+            cursor: grab;
         }
 
         #background {
             position: absolute;
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
+            width: 100%;
+            height: 100%;
             top: 0;
             left: 0;
+            object-fit: cover;
+            user-select: none;
+            pointer-events: none;
         }
 
         #video {
             position: absolute;
-            /* Adjust these values to position the video where you want on the background */
             top: 30%;
             left: 40%;
             width: 20%;
             height: auto;
             transform: translate(-50%, -50%);
+            pointer-events: none;
+            user-select: none;
         }
 
         .controls {
@@ -55,17 +58,19 @@
             padding: 10px;
             border-radius: 5px;
             color: white;
+            user-select: none;
         }
 
         button {
             padding: 5px 10px;
             margin: 0 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div id="room-container">
-        <img id="background" src="image2.jpg" alt="Room Background">
+        <img id="background" src="image2.jpg" alt="Room Background" />
         <video id="video" src="video1.mp4" autoplay loop muted></video>
     </div>
 
@@ -76,12 +81,12 @@
     </div>
 
     <script>
-        const room = document.getElementById('room-container');
-        const background = document.getElementById('background');
-        const video = document.getElementById('video');
-        const zoomInBtn = document.getElementById('zoom-in');
-        const zoomOutBtn = document.getElementById('zoom-out');
-        const zoomLevelDisplay = document.getElementById('zoom-level');
+        const room = document.getElementById("room-container");
+        const background = document.getElementById("background");
+        const video = document.getElementById("video");
+        const zoomInBtn = document.getElementById("zoom-in");
+        const zoomOutBtn = document.getElementById("zoom-out");
+        const zoomLevelDisplay = document.getElementById("zoom-level");
 
         let scale = 1;
         let posX = 0;
@@ -89,129 +94,122 @@
         let isDragging = false;
         let startX, startY;
 
-        // Set initial transform
+        // Initial transform
         updateTransform();
 
-        // Handle zoom in
-        zoomInBtn.addEventListener('click', () => {
+        // Zoom in button
+        zoomInBtn.addEventListener("click", () => {
             if (scale < 3) {
-                scale += 0.1;
+                scale = Math.min(scale + 0.1, 3);
+                limitPosition();
                 updateTransform();
             }
         });
 
-        // Handle zoom out
-        zoomOutBtn.addEventListener('click', () => {
+        // Zoom out button
+        zoomOutBtn.addEventListener("click", () => {
             if (scale > 0.5) {
-                scale -= 0.1;
+                scale = Math.max(scale - 0.1, 0.5);
+                limitPosition();
                 updateTransform();
             }
         });
 
-        // Mouse wheel for zoom
-        room.addEventListener('wheel', (e) => {
+        // Mouse wheel zoom
+        room.addEventListener("wheel", (e) => {
             e.preventDefault();
-            
-            // Get mouse position relative to room
+
             const rect = room.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-            
+
             // Calculate mouse position in unscaled coordinates
             const unscaledX = (mouseX - posX) / scale;
             const unscaledY = (mouseY - posY) / scale;
-            
-            // Apply zoom
+
             if (e.deltaY < 0 && scale < 3) {
-                // Zoom in
                 scale *= 1.1;
+                if (scale > 3) scale = 3;
             } else if (e.deltaY > 0 && scale > 0.5) {
-                // Zoom out
                 scale /= 1.1;
+                if (scale < 0.5) scale = 0.5;
             }
-            
-            // Calculate new position to zoom toward mouse
+
+            // Adjust position to zoom toward the mouse pointer
             posX = mouseX - unscaledX * scale;
             posY = mouseY - unscaledY * scale;
-            
-            // Limit position to keep background visible
+
             limitPosition();
             updateTransform();
         });
 
-        // Mouse events for dragging
-        room.addEventListener('mousedown', (e) => {
+        // Dragging with mouse
+        room.addEventListener("mousedown", (e) => {
             isDragging = true;
             startX = e.clientX - posX;
             startY = e.clientY - posY;
-            room.style.cursor = 'grabbing';
+            room.style.cursor = "grabbing";
         });
 
-        document.addEventListener('mousemove', (e) => {
+        document.addEventListener("mousemove", (e) => {
             if (!isDragging) return;
-            
+
             posX = e.clientX - startX;
             posY = e.clientY - startY;
-            
+
             limitPosition();
             updateTransform();
         });
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener("mouseup", () => {
             isDragging = false;
-            room.style.cursor = 'grab';
+            room.style.cursor = "grab";
         });
 
-        // Touch events for mobile
-        room.addEventListener('touchstart', (e) => {
+        // Touch events for dragging and pinch zoom
+        room.addEventListener("touchstart", (e) => {
             if (e.touches.length === 1) {
                 isDragging = true;
                 startX = e.touches[0].clientX - posX;
                 startY = e.touches[0].clientY - posY;
-            }
-        });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isDragging || e.touches.length !== 1) return;
-            e.preventDefault();
-            
-            posX = e.touches[0].clientX - startX;
-            posY = e.touches[0].clientY - startY;
-            
-            limitPosition();
-            updateTransform();
-        });
-
-        document.addEventListener('touchend', () => {
-            isDragging = false;
-        });
-
-        // Pinch zoom for touch devices
-        let initialDistance = null;
-        let initialScale = 1;
-
-        room.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2) {
+            } else if (e.touches.length === 2) {
+                isDragging = false;
                 initialDistance = getDistance(e.touches[0], e.touches[1]);
                 initialScale = scale;
             }
         });
 
-        room.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2) {
+        document.addEventListener("touchmove", (e) => {
+            if (e.touches.length === 1 && isDragging) {
+                e.preventDefault();
+                posX = e.touches[0].clientX - startX;
+                posY = e.touches[0].clientY - startY;
+
+                limitPosition();
+                updateTransform();
+            } else if (e.touches.length === 2) {
                 e.preventDefault();
                 const currentDistance = getDistance(e.touches[0], e.touches[1]);
                 if (initialDistance !== null) {
                     scale = initialScale * (currentDistance / initialDistance);
-                    scale = Math.min(Math.max(scale, 0.5), 3); // Limit scale
+                    scale = Math.min(Math.max(scale, 0.5), 3);
+                    limitPosition();
                     updateTransform();
                 }
             }
         });
 
-        room.addEventListener('touchend', () => {
-            initialDistance = null;
+        document.addEventListener("touchend", (e) => {
+            if (e.touches.length < 2) {
+                initialDistance = null;
+            }
+            if (e.touches.length === 0) {
+                isDragging = false;
+            }
         });
+
+        let initialDistance = null;
+        let initialScale = 1;
 
         function getDistance(touch1, touch2) {
             const dx = touch1.clientX - touch2.clientX;
@@ -221,13 +219,15 @@
 
         function limitPosition() {
             const roomRect = room.getBoundingClientRect();
-            const bgRect = background.getBoundingClientRect();
-            
-            const maxX = (bgRect.width * scale - roomRect.width) / 2;
-            const maxY = (bgRect.height * scale - roomRect.height) / 2;
-            
-            posX = Math.max(-maxX, Math.min(posX, maxX));
-            posY = Math.max(-maxY, Math.min(posY, maxY));
+            const bgWidth = room.offsetWidth;
+            const bgHeight = room.offsetHeight;
+
+            // Calculate the max allowed translation so the scaled image covers the container
+            const maxX = (bgWidth * scale - roomRect.width) / 2;
+            const maxY = (bgHeight * scale - roomRect.height) / 2;
+
+            posX = Math.min(maxX, Math.max(posX, -maxX));
+            posY = Math.min(maxY, Math.max(posY, -maxY));
         }
 
         function updateTransform() {

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>Zoomable Background with Video</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+
+  #viewport {
+    width: 100vw;
+    height: 100vh;
+    touch-action: none; /* disable default touch gestures */
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #scene {
+    position: relative;
+    display: inline-block;
+    transform-origin: 0 0;
+    will-change: transform;
+    cursor: grab;
+  }
+
+  #scene:active {
+    cursor: grabbing;
+  }
+
+  #bg-image {
+    display: block;
+    max-width: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  #overlay-video {
+    position: absolute;
+    top: 30%;   /* adjust this to position video on image */
+    left: 40%;
+    width: 200px;
+    height: 120px;
+    pointer-events: none;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="scene">
+    <img id="bg-image" src="image2.jpg" alt="Background" />
+    <video id="overlay-video" autoplay loop muted playsinline>
+      <source src="video1.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@panzoom/panzoom@4.4.3/dist/panzoom.min.js"></script>
+<script>
+  const scene = document.getElementById('scene');
+  const viewport = document.getElementById('viewport');
+
+  const panzoom = Panzoom(scene, {
+    contain: 'inside',
+    maxScale: 3,
+    minScale: 1,
+    step: 0.1,
+    animate: true,
+  });
+
+  viewport.addEventListener('wheel', panzoom.zoomWithWheel);
+  viewport.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+
+</body>
+</html>

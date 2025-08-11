@@ -1,91 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>Zoomable Background with Video - Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>تصویر و ویدیو متصل با اسکرول و زوم</title>
 <style>
   html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
-    overflow: hidden;
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    direction: rtl;
     background: #000;
   }
-  #viewport {
+  #container {
+    position: relative;
     width: 100vw;
     height: 100vh;
-    touch-action: none; /* disable default touch gestures */
     overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  #scene {
-    position: relative;
-    display: inline-block;
-    transform-origin: 0 0; /* important for correct zoom positioning */
-    will-change: transform;
+    touch-action: none;
     cursor: grab;
-    user-select: none;
   }
-  #scene:active {
-    cursor: grabbing;
-  }
-  #bg-image {
-    display: block;
-    max-width: none;
-    user-select: none;
-    -webkit-user-drag: none;
-  }
-  #overlay-video {
+  #image {
     position: absolute;
-    top: 30%;
-    left: 40%;
-    width: 200px;
-    height: 120px;
-    pointer-events: none;
-    border-radius: 8px;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+    user-select: none;
+    pointer-events: none;
+  }
+  #video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: top left;
+    max-width: 100%;
+    max-height: 100%;
+    pointer-events: auto;
   }
 </style>
 </head>
 <body>
 
-<div id="viewport">
-  <div id="scene">
-    <img id="bg-image" src="image2.jpg" alt="Background" />
-    <video id="overlay-video" autoplay loop muted playsinline>
-      <source src="video1.mp4" type="video/mp4" />
-      Your browser does not support the video tag.
-    </video>
-  </div>
+<div id="container">
+  <img id="image" src="image2.jpg" alt="background" />
+  <video id="video" src="video1.mp4" muted loop autoplay></video>
 </div>
 
-<script src="https://unpkg.com/@panzoom/panzoom@4.4.3/dist/panzoom.min.js"></script>
 <script>
-  const scene = document.getElementById('scene');
-  const viewport = document.getElementById('viewport');
+  (function() {
+    const container = document.getElementById('container');
+    const video = document.getElementById('video');
 
-  const panzoom = Panzoom(scene, {
-    contain: 'inside',
-    maxScale: 3,
-    minScale: 1,
-    step: 0.1,
-    animate: true,
-  });
+    // مقادیر اولیه
+    let scale = 1;
+    let minScale = 1;
+    let maxScale = 3;
 
-  // Zoom with mouse wheel
-  viewport.addEventListener('wheel', panzoom.zoomWithWheel);
+    // موقعیت (جابجایی)
+    let posX = 0;
+    let posY = 0;
 
-  // Enable panning with mouse drag or touch drag on viewport
-  viewport.addEventListener('pointerdown', panzoom.pointerDown);
-  viewport.addEventListener('pointermove', panzoom.pointerMove);
-  viewport.addEventListener('pointerup', panzoom.pointerUp);
-  viewport.addEventListener('pointercancel', panzoom.pointerUp);
-  viewport.addEventListener('pointerleave', panzoom.pointerUp);
+    // محدودیت جابجایی - براساس اندازه تصویر و اسکیل
+    function clampPosition(x, y) {
+      const containerRect = container.getBoundingClientRect();
+      const videoWidth = video.videoWidth || video.clientWidth;
+      const videoHeight = video.videoHeight || video.clientHeight;
 
-  // Prevent default scrolling on touch devices so panzoom works
-  viewport.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+      const scaledWidth = containerRect.width * scale;
+      const scaledHeight = containerRect.height * scale;
+
+      // محدود کردن جابجایی به محدوده تصویر (مانند پوشش تمام صفحه)
+      const maxX = 0;
+      const maxY = 0;
+      const minX = containerRect.width - scaledWidth;
+      const minY = containerRect.height - scaledHeight;
+
+      x = Math.min(maxX, Math.max(minX, x));
+      y = Math.min(maxY, Math.max(minY, y));
+      return { x, y };
+    }
+
+    // به‌روزرسانی موقعیت و اندازه ویدیو
+    function update() {
+      video.style.transform = `translate(${posX}px, ${posY}px) scale(${scale}) translate(-50%, -50%)`;
+    }
+
+    // کنترل اسکرول برای زوم
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+
+      const delta = -e.deltaY * 0.001; // جهت زوم
+      let newScale = scale + delta;
+
+      // محدود کردن زوم
+      newScale = Math.min(maxScale, Math.max(minScale, newScale));
+
+      // برای زوم حول موقعیت موس
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // نسبت موس به تصویر
+      const dx = (mouseX - posX);
+      const dy = (mouseY - posY);
+
+      // تغییر موقعیت برای حفظ نقطه زیر موس ثابت
+      posX -= dx * (newScale / scale - 1);
+      posY -= dy * (newScale / scale - 1);
+
+      scale = newScale;
+
+      // محدود کردن جابجایی
+      const clamped = clampPosition(posX, posY);
+      posX = clamped.x;
+      posY = clamped.y;
+
+      update();
+    }, { passive: false });
+
+    // درگ برای جابجایی موقعیت (اسکرول با ماوس)
+    let isDragging = false;
+    let dragStartX, dragStartY;
+    let startPosX, startPosY;
+
+    container.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      startPosX = posX;
+      startPosY = posY;
+      container.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+
+      e.preventDefault();
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+
+      posX = startPosX + dx;
+      posY = startPosY + dy;
+
+      // محدود کردن جابجایی
+      const clamped = clampPosition(posX, posY);
+      posX = clamped.x;
+      posY = clamped.y;
+
+      update();
+    });
+
+    // تنظیم اندازه اولیه ویدیو پس از لود
+    video.addEventListener('loadedmetadata', () => {
+      // اندازه ویدیو را متناسب با container قرار می‌دهیم
+      video.style.width = '50vw';
+      video.style.height = 'auto';
+      update();
+    });
+
+    // اندازه ویدیو را متناسب با اندازه پنجره تنظیم کنیم هنگام تغییر سایز پنجره
+    window.addEventListener('resize', () => {
+      update();
+    });
+
+    // حالت اولیه
+    update();
+
+  })();
 </script>
 
 </body>

@@ -3,15 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>Zoomable Background with Video</title>
+<title>Zoomable Background with Video - Fixed</title>
 <style>
   html, body {
-    margin: 0;
-    height: 100%;
-    background: #000;
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
     overflow: hidden;
+    background: #000;
   }
-
   #viewport {
     width: 100vw;
     height: 100vh;
@@ -21,29 +20,26 @@
     justify-content: center;
     align-items: center;
   }
-
   #scene {
     position: relative;
     display: inline-block;
-    transform-origin: 0 0;
+    transform-origin: 0 0; /* important for correct zoom positioning */
     will-change: transform;
     cursor: grab;
+    user-select: none;
   }
-
   #scene:active {
     cursor: grabbing;
   }
-
   #bg-image {
     display: block;
     max-width: none;
     user-select: none;
     -webkit-user-drag: none;
   }
-
   #overlay-video {
     position: absolute;
-    top: 30%;   /* adjust this to position video on image */
+    top: 30%;
     left: 40%;
     width: 200px;
     height: 120px;
@@ -78,10 +74,19 @@
     animate: true,
   });
 
+  // Zoom with mouse wheel
   viewport.addEventListener('wheel', panzoom.zoomWithWheel);
+
+  // Enable panning with mouse drag or touch drag on viewport
+  viewport.addEventListener('pointerdown', panzoom.pointerDown);
+  viewport.addEventListener('pointermove', panzoom.pointerMove);
+  viewport.addEventListener('pointerup', panzoom.pointerUp);
+  viewport.addEventListener('pointercancel', panzoom.pointerUp);
+  viewport.addEventListener('pointerleave', panzoom.pointerUp);
+
+  // Prevent default scrolling on touch devices so panzoom works
   viewport.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 </script>
 
 </body>
 </html>
-
